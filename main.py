@@ -6,8 +6,19 @@ import asyncio
 from pydantic import BaseModel
 from resources.composition import Microservices
 from resources.students import StudentsResource
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhdXRob3JpemVkVXNlciIsIm5hbWUiOiJRV1pNWC1VU0VSIiwiaWF0IjoxNzAwMjAxNzg3LCJleHAiOjE3MzYyMDE3ODd9.VFT_fTxwn_Qn3AGq6BUMcJamz3c2IuYA4nBa5oflkv8"
 
