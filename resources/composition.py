@@ -1,7 +1,10 @@
+import asyncio
+
 import aiohttp
 import requests
 import time
 
+from fastapi import Form
 from pydantic import BaseModel
 
 class Pet(BaseModel):
@@ -52,6 +55,16 @@ class Microservices:
                 print(f"Adoption Async returned in {end_time - start_time: 2f} seconds")
                 return adoption
 
+    @staticmethod
+    async def deny_adoption(adoption_id, query, data):
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+            start_time = time.time()
+            async with session.put(f"http://18.217.19.86/adoptions/{adoption_id}", params=query, json=data) as response:
+                adoption = await response.json()
+                end_time = time.time()
+                print(f"Adoption Async returned in {end_time - start_time: 2f} seconds")
+                return response.status
+
     async def apply_for_adoption_async(self, user_id: int, pet_id: int) -> dict:
         adoption_data = {
             "petId": pet_id,
@@ -68,7 +81,7 @@ class Microservices:
                     return {"error": f"Failed to create adoption. Status code: {response_create_adoption.status}"}
 
         user_info = requests.get(
-            f"http://https://20t8y8ccj8.execute-api.us-east-2.amazonaws.com/Stage1/api/users/{user_id}",
+            f"https://20t8y8ccj8.execute-api.us-east-2.amazonaws.com/Stage1/api/users/{user_id}",
             headers=self.headers).json()
 
         url_update_adoption = f"http://18.217.19.86/adoptions/{created_adoption['adoptionId']}"
@@ -85,12 +98,70 @@ class Microservices:
 
     async def create_pet_async(self, pet_data: Pet):
         url = "https://20t8y8ccj8.execute-api.us-east-2.amazonaws.com/Stage1/api/pets"
-        data = f"userId={pet_data.userId}&petId={pet_data.petId}&name='{pet_data.name}'&type='{pet_data.type}'&breed='{pet_data.breed}'&age={pet_data.age}&healthRecords='{pet_data.healthRecords}'&createdAt='{pet_data.createdAt}'"
-        print(data)
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-            async with session.post(url, data=data, headers=self.headers) as response:
+        data = aiohttp.FormData()
+        data.add_field('userId', pet_data.userId)
+        data.add_field('petId', pet_data.petId)
+        data.add_field('name', repr(pet_data.name))
+        data.add_field('type', repr(pet_data.type))
+        data.add_field('breed', repr(pet_data.breed))
+        data.add_field('age', repr(pet_data.age))
+        data.add_field('healthRecords', repr(pet_data.healthRecords))
+        data.add_field('createdAt', repr(pet_data.createdAt))
 
-                return await response.json()
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+            async with session.post(url, headers=self.headers, data=data) as response:
+
+                return await response.text()
+
+    async def accept_adoption_async(self, adoption_id):
+        accept_payload = {
+            "status": "approved"
+        }
+
+        reject_payload = {
+            "status": "rejected"
+        }
+
+        url = f"http://18.217.19.86/adoptions/{adoption_id}"
+        adoption = self.get_adoption_sync(adoption_id)
+        pet_id = adoption['petId']
+        adopt_user_id = adoption['adopterId']
+        adopt_email = self.get_user_sync(int(adopt_user_id))['email']
+
+        pet = self.get_pet_sync(int(pet_id))
+        pet_name = pet['name']
+        shel_user_id = pet['userid']
+        shel_email = self.get_user_sync(int(shel_user_id))['email']
+
+        query = {"adoption_id": adoption_id,
+                 "adopter_email": adopt_email,
+                 "shelter_email": shel_email,
+                 "pet_name": pet_name}
+
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+            async with session.put(url, params=query, json=accept_payload) as response:
+                if response.status == 200 or response.status == 201:
+                    adoption_ids = [
+                        adoption["adoptionId"]
+                        for adoption in self.get_adoption_all()
+                        if adoption["petId"] == str(pet_id) and adoption["adopterId"] != str(adopt_user_id)
+                    ]
+
+                    deny_responses = await asyncio.gather(
+                        *(
+                            self.deny_adoption(adop_id, {
+                                **query,
+                                "adoption_id": adop_id
+                            }, reject_payload) for adop_id in adoption_ids
+                        )
+                    )
+
+                    for dr in deny_responses:
+                        if dr not in {200, 201}:
+                            return {"error": f"Failed to deny adoption. Status code: {dr}"}
+                    return {"success": "accept one and deny all"}
+                else:
+                    return {"error": f"Failed to accept adoption. Status code: {response.status}"}
 
     def get_pet_sync(self, pet_id):
         response = requests.get(f"https://20t8y8ccj8.execute-api.us-east-2.amazonaws.com/Stage1/api/pets/{pet_id}",

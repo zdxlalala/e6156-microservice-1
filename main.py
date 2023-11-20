@@ -154,7 +154,7 @@ async def user_and_pets_sync(user_id: int):
     adoptions = {}
     index = 1
     for adop in all_adoptions:
-        if adop['adopterId'] == user_id:
+        if adop['adopterId'] == str(user_id):
             adoptions[index] = adop
             index += 1
 
@@ -166,6 +166,14 @@ async def user_and_pets_sync(user_id: int):
 
     return user_page
 
+
+@app.put("/accept_adoption/{adoption_id}")
+async def accept_adoption(adoption_id: str):
+    try:
+        result = await microservices.accept_adoption_async(adoption_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/composite_async/{user_id}/{pet_id}/{adoption_id}")
 async def composite_async(user_id: int, pet_id: int, adoption_id: str):
