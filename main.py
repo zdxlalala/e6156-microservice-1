@@ -156,22 +156,31 @@ async def user_and_pets_sync(user_id: int):
     all_adoptions = microservices.get_adoption_all()
 
     pets = {}
+    pid_list = []
     index = 1
     for p in all_pets:
         if p['userid'] == user_id:
             pets[index] = p
+            pid_list.append(p['petid'])
             index += 1
 
+    applications = {}
     adoptions = {}
     index = 1
+    index_ap = 1
     for adop in all_adoptions:
         if adop['adopterId'] == str(user_id):
             adoptions[index] = adop
             index += 1
+        elif int(adop['petId']) in pid_list:
+            applications[index_ap] = adop
+            index_ap += 1
+
 
     user_page = {
         "user_info": user_info,
         "listing_info": pets,
+        "applications": applications,
         "adoption_info": adoptions
     }
 
