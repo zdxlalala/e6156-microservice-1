@@ -45,6 +45,7 @@ class AdoptionApplication(BaseModel):
     user_id: int
 
 class Listing(BaseModel):
+    pet_id: int
     pet_name: str
     pet_type: str
     pet_breed: str
@@ -130,7 +131,8 @@ async def get_all_listings(age: Optional[int] = None, breed: Optional[str] = Non
         user_info = await microservices.get_user(pet['userid'])
         # Check conditions based on age and breed
         if (age is None or pet['age'] == age) and (breed is None or pet['breed'] == breed):
-            all_listings[index] = Listing(pet_name=pet['name'],
+            all_listings[index] = Listing(pet_id=pet['petid'],
+                                          pet_name=pet['name'],
                                           pet_type=pet['type'],
                                           pet_breed=pet['breed'],
                                           pet_age=pet['age'],
