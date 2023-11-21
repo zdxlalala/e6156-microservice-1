@@ -164,7 +164,7 @@ async def user_and_pets_sync(user_id: int):
     for p in all_pets:
         if p['userid'] == user_id:
             pets[index] = p
-            pid_list.append(p['petid'])
+            pid_list.append(str(p['petid']))
             index += 1
 
     applications = {}
@@ -175,7 +175,7 @@ async def user_and_pets_sync(user_id: int):
         if adop['adopterId'] == str(user_id):
             adoptions[index] = adop
             index += 1
-        elif int(adop['petId']) in pid_list:
+        elif adop['petId'] in pid_list:
             applications[index_ap] = adop
             index_ap += 1
 
