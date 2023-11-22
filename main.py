@@ -61,9 +61,13 @@ class CompositeResource:
         self.microservices = Microservices(token)
 
     async def get_composite_info(self, pet_id, user_id, adoption_id):
-        pet_info = await self.microservices.get_pet(pet_id)
-        user_info = await self.microservices.get_user(user_id)
-        adoption_info = await self.microservices.get_adoption(adoption_id)
+        # Define the tasks for fetching pet, user, and adoption information concurrently
+        pet_task = self.microservices.get_pet(pet_id)
+        user_task = self.microservices.get_user(user_id)
+        adoption_task = self.microservices.get_adoption(adoption_id)
+
+        # Use asyncio.gather to run the tasks concurrently
+        pet_info, user_info, adoption_info = await asyncio.gather(pet_task, user_task, adoption_task)
 
         async_sample = {
             "pet_info_async": pet_info,
