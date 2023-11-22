@@ -189,7 +189,7 @@ class Microservices:
             for dr in delete_responses:
                 if dr not in {200, 201}:
                     return {"error": f"Failed to delete adoption. Status code: {dr}"}
-            return {"success": "accept one and deny all"}
+            return {"success": "Pet and associated adoptions deleted"}
         else:
             return {"error": f"Failed to delete pet. Status code: {response.status_code}"}
 

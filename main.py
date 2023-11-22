@@ -192,6 +192,7 @@ async def accept_adoption(adoption_id: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @app.delete("/delete_pet_with_adoption/{pet_id}")
 async def delete_pet_with_adoption(pet_id: int):
     try:
