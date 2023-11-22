@@ -124,21 +124,21 @@ async def apply_for_adoption(adoption_data: AdoptionApplication):
 @app.get("/all_listings")
 async def get_all_listings(age: Optional[int] = None, breed: Optional[str] = None):
     pets = microservices.get_pet_all()
-    all_listings = {}
+    all_listings = []
     index = 1
     for pet in pets:
         user_info = await microservices.get_user(pet['userid'])
         # Check conditions based on age and breed
         if (age is None or pet['age'] == age) and (breed is None or pet['breed'] == breed):
-            all_listings[pet['petid']] = Listing(pet_name=pet['name'],
-                                                 pet_type=pet['type'],
-                                                 pet_breed=pet['breed'],
-                                                 pet_age=pet['age'],
-                                                 pet_health_records=pet['healthrecords'],
-                                                  # pet_description=microservices.get_pet_desc(pet['petid']),
-                                                 user_name=user_info['username'],
-                                                 user_email=user_info['email']).model_dump()
-            index += 1
+            all_listings.append(Listing(pet_name=pet['name'],
+                                        pet_type=pet['type'],
+                                        pet_breed=pet['breed'],
+                                        pet_age=pet['age'],
+                                        pet_health_records=pet['healthrecords'],
+                                        # pet_description=microservices.get_pet_desc(pet['petid']),
+                                        user_name=user_info['username'],
+                                        user_email=user_info['email']).model_dump()
+                                )
 
     return all_listings
 
@@ -158,26 +158,21 @@ async def user_and_pets_sync(user_id: int):
     all_pets = microservices.get_pet_all()
     all_adoptions = microservices.get_adoption_all()
 
-    pets = {}
+    pets = []
     pid_list = []
-    index = 1
     for p in all_pets:
         if p['userid'] == user_id:
-            pets[index] = p
+            pets.append(p)
             pid_list.append(str(p['petid']))
-            index += 1
 
-    applications = {}
-    adoptions = {}
-    index = 1
-    index_ap = 1
+    applications = []
+    adoptions = []
+
     for adop in all_adoptions:
         if adop['adopterId'] == str(user_id):
-            adoptions[index] = adop
-            index += 1
+            adoptions.append(adop)
         elif adop['petId'] in pid_list:
-            applications[index_ap] = adop
-            index_ap += 1
+            applications.append(adop)
 
     user_page = {
         "user_info": user_info,
