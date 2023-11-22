@@ -7,6 +7,7 @@ import time
 from fastapi import Form
 from pydantic import BaseModel
 
+
 class Pet(BaseModel):
     userId: int
     petId: int
@@ -52,8 +53,19 @@ class Microservices:
             async with session.get(f"http://18.217.19.86/adoptions/{adoption_id}") as response:
                 adoption = await response.json()
                 end_time = time.time()
-                print(f"Adoption Async returned in {end_time - start_time: 2f} seconds")
+                print(f"Get adoption Async returned in {end_time - start_time: 2f} seconds")
                 return adoption
+
+    @staticmethod
+    async def delete_adoption(adoption_id):
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+            start_time = time.time()
+            async with session.delete(f"http://18.217.19.86/adoptions/{adoption_id}") as response:
+                await response.json()
+                result = response.status
+                end_time = time.time()
+                print(f"Delete adoption Async returned in {end_time - start_time: 2f} seconds")
+                return result
 
     @staticmethod
     async def deny_adoption(adoption_id, query, data):
@@ -87,7 +99,8 @@ class Microservices:
         url_update_adoption = f"http://18.217.19.86/adoptions/{created_adoption['adoptionId']}"
 
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-            async with session.put(url_update_adoption, json={"adopter_email": user_info['email']}) as response_update_adoption:
+            async with session.put(url_update_adoption,
+                                   json={"adopter_email": user_info['email']}) as response_update_adoption:
                 if response_update_adoption.status in {200, 201}:  # Assuming 200 means successful update
                     updated_adoption = await response_update_adoption.json()
                     return updated_adoption
@@ -110,7 +123,6 @@ class Microservices:
 
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.post(url, headers=self.headers, data=data) as response:
-
                 return await response.text()
 
     async def accept_adoption_async(self, adoption_id):
@@ -163,6 +175,24 @@ class Microservices:
                 else:
                     return {"error": f"Failed to accept adoption. Status code: {response.status}"}
 
+    async def delete_pet_with_adoption_async(self, pet_id):
+        response = requests.delete(f"https://20t8y8ccj8.execute-api.us-east-2.amazonaws.com/Stage1/api/pets/{pet_id}",
+                                   headers=self.headers)
+        if response.status_code in {200, 201}:
+            adoptions = self.get_adoption_all()
+            delete_responses = await asyncio.gather(
+                *(
+                    self.delete_adoption(adop['adoption_id'])
+                    for adop in adoptions if str(pet_id) == adop['petId']
+                )
+            )
+            for dr in delete_responses:
+                if dr not in {200, 201}:
+                    return {"error": f"Failed to delete adoption. Status code: {dr}"}
+            return {"success": "accept one and deny all"}
+        else:
+            return {"error": f"Failed to delete pet. Status code: {response.status_code}"}
+
     def get_pet_sync(self, pet_id):
         response = requests.get(f"https://20t8y8ccj8.execute-api.us-east-2.amazonaws.com/Stage1/api/pets/{pet_id}",
                                 headers=self.headers)
@@ -187,8 +217,9 @@ class Microservices:
         return response.json()
 
     def get_pet_desc(self, pet_id):
-        response = requests.get(f"https://20t8y8ccj8.execute-api.us-east-2.amazonaws.com/Stage1/api/pets/{pet_id}/description",
-                                headers=self.headers)
+        response = requests.get(
+            f"https://20t8y8ccj8.execute-api.us-east-2.amazonaws.com/Stage1/api/pets/{pet_id}/description",
+            headers=self.headers)
         return response.json()
 
     @staticmethod
@@ -218,4 +249,3 @@ class Microservices:
                 return {"error": f"Failed to delete pet {pet_id}. Status code: {response_pet.status_code}"}
 
         return {"message": f"User {user_id} and associated pets deleted successfully"}
-

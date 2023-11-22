@@ -197,6 +197,15 @@ async def accept_adoption(adoption_id: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.delete("/delete_pet_with_adoption/{pet_id}")
+async def delete_pet_with_adoption(pet_id: int):
+    try:
+        result = await microservices.delete_pet_with_adoption_async(pet_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.get("/composite_async/{user_id}/{pet_id}/{adoption_id}")
 async def composite_async(user_id: int, pet_id: int, adoption_id: str):
     result = composite_resource.get_composite_info(user_id, pet_id, adoption_id)
