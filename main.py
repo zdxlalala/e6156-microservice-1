@@ -21,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhdXRob3JpemVkVXNlciIsIm5hbWUiOiJRV1pNWC1VU0VSIiwiaWF0IjoxNzAwMjAxNzg3LCJleHAiOjE3MzYyMDE3ODd9.VFT_fTxwn_Qn3AGq6BUMcJamz3c2IuYA4nBa5oflkv8"
+token = ""
 
 class Pet(BaseModel):
     userId: int
