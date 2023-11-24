@@ -24,6 +24,22 @@ class Microservices:
     def __init__(self, access_token: str):
         self.headers = {"Authorization": f"Bearer {access_token}"}
 
+    def get_adoption_query(self, adoption):
+        pet_id = adoption['petId']
+        adopt_user_id = adoption['adopterId']
+        adopt_email = self.get_user_sync(int(adopt_user_id))['email']
+
+        pet = self.get_pet_sync(int(pet_id))
+        pet_name = pet['name']
+        shel_user_id = pet['userid']
+        shel_email = self.get_user_sync(int(shel_user_id))['email']
+
+        query = {"adoption_id": adoption['adoptionId'],
+                 "adopter_email": adopt_email,
+                 "shelter_email": shel_email,
+                 "pet_name": pet_name}
+        return query
+
     async def get_user(self, user_id):
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             start_time = time.time()
@@ -60,7 +76,8 @@ class Microservices:
     async def delete_adoption(adoption_id):
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             start_time = time.time()
-            async with session.delete(f"http://18.217.19.86/adoptions/{adoption_id}") as response:
+            async with session.delete(f"http://18.217.19.86/adoptions/{adoption_id}",
+                                      params={"adoption_id": adoption_id}) as response:
                 await response.json()
                 result = response.status
                 end_time = time.time()
@@ -77,10 +94,10 @@ class Microservices:
                 print(f"Adoption Async returned in {end_time - start_time: 2f} seconds")
                 return response.status
 
-    async def apply_for_adoption_async(self, user_id: int, pet_id: int) -> dict:
+    async def apply_for_adoption_async(self, user_id: str, pet_id: str) -> dict:
         adoption_data = {
-            "petId": pet_id,
             "adopterId": user_id,
+            "petId": pet_id
         }
 
         url_create_adoption = "http://18.217.19.86/adoptions"
@@ -98,9 +115,13 @@ class Microservices:
 
         url_update_adoption = f"http://18.217.19.86/adoptions/{created_adoption['adoptionId']}"
 
+        pending_payload = {
+            "status": "pending"
+        }
+
+        query = self.get_adoption_query(created_adoption)
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-            async with session.put(url_update_adoption,
-                                   json={"adopter_email": user_info['email']}) as response_update_adoption:
+            async with session.put(url_update_adoption, params=query, json=pending_payload) as response_update_adoption:
                 if response_update_adoption.status in {200, 201}:  # Assuming 200 means successful update
                     updated_adoption = await response_update_adoption.json()
                     return updated_adoption
@@ -136,19 +157,9 @@ class Microservices:
 
         url = f"http://18.217.19.86/adoptions/{adoption_id}"
         adoption = self.get_adoption_sync(adoption_id)
+        query = self.get_adoption_query(adoption)
         pet_id = adoption['petId']
         adopt_user_id = adoption['adopterId']
-        adopt_email = self.get_user_sync(int(adopt_user_id))['email']
-
-        pet = self.get_pet_sync(int(pet_id))
-        pet_name = pet['name']
-        shel_user_id = pet['userid']
-        shel_email = self.get_user_sync(int(shel_user_id))['email']
-
-        query = {"adoption_id": adoption_id,
-                 "adopter_email": adopt_email,
-                 "shelter_email": shel_email,
-                 "pet_name": pet_name}
 
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.put(url, params=query, json=accept_payload) as response:
@@ -182,7 +193,7 @@ class Microservices:
             adoptions = self.get_adoption_all()
             delete_responses = await asyncio.gather(
                 *(
-                    self.delete_adoption(adop['adoption_id'])
+                    self.delete_adoption(adop['adoptionId'])
                     for adop in adoptions if str(pet_id) == adop['petId']
                 )
             )

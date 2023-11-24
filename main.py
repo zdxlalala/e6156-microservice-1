@@ -41,8 +41,8 @@ class Adoption(BaseModel):
     adoption_id: int
 
 class AdoptionApplication(BaseModel):
-    pet_id: int
-    user_id: int
+    pet_id: str
+    user_id: str
 
 class Listing(BaseModel):
     pet_name: str
